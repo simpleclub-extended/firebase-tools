@@ -15,14 +15,17 @@ export interface FunctionsProxyOptions {
 
 export interface FunctionProxyRewrite {
   function: string;
+  region: string;
 }
 
 /**
  * Returns a function which, given a FunctionProxyRewrite, returns a Promise
  * that resolves with a middleware-like function that proxies the request to a
  * hosted or live function.
+ *
+ * @return FunctionProxyRewrite
  */
-export default function (
+export function functionsProxy(
   options: FunctionsProxyOptions
 ): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
   return (rewrite: FunctionProxyRewrite) => {
@@ -30,7 +33,7 @@ export default function (
       // TODO(samstern): This proxy assumes all functions are in the default region, but this is
       //                 not a safe assumption.
       const projectId = getProjectId(options, false);
-      let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      let url = `https://${rewrite.region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
       let destLabel = "live";
 
       if (includes(options.targets, "functions")) {
@@ -45,12 +48,14 @@ export default function (
             functionsEmu.getInfo().port,
             projectId,
             rewrite.function,
-            "us-central1"
+            rewrite.region
           );
         }
       }
 
-      resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
+      resolve(
+        proxyRequestHandler(url, `${destLabel} Function ${rewrite.region}/${rewrite.function}`)
+      );
     });
   };
 }
